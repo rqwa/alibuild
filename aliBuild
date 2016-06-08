@@ -283,8 +283,6 @@ class RsyncRemoteSync:
     dieOnError(err, "Unable to update from specified store.")
 
   def syncToRemote(self, p, spec):
-    if not self.writeStore:
-      return
     tarballNameWithRev = format("%(package)s-%(version)s-%(revision)s.%(architecture)s.tar.gz",
                                 architecture=self.architecture,
                                 **spec)
@@ -297,6 +295,7 @@ class RsyncRemoteSync:
                  storePath=spec["storePath"],
                  linksPath=spec["linksPath"],
                  tarballNameWithRev=tarballNameWithRev)
+    banner("rsync command: %s"%cmd)
     err = execute(cmd)
     dieOnError(err, "Unable to upload tarball.")
 
@@ -675,8 +674,7 @@ def doMain():
                   "In most cases this is achieved by doing in the package source directory:\n\n"
                   "  git pull --rebase\n",
                   pwd=os.getcwd(), star=star()))
-    debug("Write store disabled since some packages will be picked up from local checkout.")
-    syncHelper.writeStore = ""
+    debug("Write store disabled for development packages will be picked up from local checkout.")
 
   # Resolve the tag to the actual commit ref, so that
   for p in buildOrder:
@@ -1252,8 +1250,9 @@ def doMain():
                                                    for dp in updatablePkgs]))
 
     dieOnError(err, buildErrMsg)
-
-    syncHelper.syncToRemote(p, spec)
+    
+    if not spec["package"] in develPkgs:
+      syncHelper.syncToRemote(p, spec)
   banner(format("Build of %(mainPackage)s successfully completed on `%(h)s'.\n"
               "Your software installation is at:"
               "\n\n  %(wp)s\n\n"
